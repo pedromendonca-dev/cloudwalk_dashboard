@@ -391,10 +391,14 @@ function Chatbot() {
       })
     });
 
-    if (!response.ok) throw new Error('Erro ao chamar API');
-
     const data = await response.json();
-    return data.content[0].text;
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Erro ao chamar API');
+    }
+
+    return data.content;
+    
   } catch (err) {
     throw new Error(`Erro: ${err.message}`);
   }
