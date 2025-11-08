@@ -380,29 +380,48 @@ function Chatbot() {
     }
   };
 
-  const sendToClaudeAPI = async (userMessage, clientData) => {
-  try {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: userMessage,
-        clientData: clientData
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Erro ao chamar API');
-    }
-
-    return data.content;
+  // Função auxiliar para calcular risco
+  const calcularRisco = (clientData) => {
+    let score = 0;
+    const processos = clientData.Processes?.TotalLawsuits || 0;
+    const sancoes180d = clientData.KycData.Last180DaysSanctions;
+    const impostoAPagar = clientData.FinancialData.TaxReturns?.some(t => 
+      t.Year === '2024' && t.Status.includes('IMPOSTO A PAGAR')
+    );
+    const doadorEleitoral = clientData.KycData.IsCurrentlyElectoralDonor;
     
-  } catch (err) {
-    throw new Error(`Erro: ${err.message}`);
-  }
-};
+    if (processos > 20) score += 50;
+    else if (processos > 0) score += 20;
+    if (sancoes180d > 0) score += 30;
+    if (impostoAPagar) score += 20;
+    if (doadorEleitoral) score -= 10;
+    
+    return Math.max(0, score);
+  };
+
+  const sendToClaudeAPI = async (userMessage, clientData) => {
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage,
+          clientData: clientData
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao chamar API');
+      }
+
+      return data.content;
+      
+    } catch (err) {
+      throw new Error(`Erro: ${err.message}`);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
@@ -415,8 +434,61 @@ function Chatbot() {
     setLoading(true);
 
     try {
-      const clientData = await fetchSupabaseData();
-      const assistantResponse = await sendToClaudeAPI(userMessage, clientData);
+      // Buscar dados brutos do Supabase
+      const rawData = await fetchSupabaseData();
+      
+      // 🎯 PROCESSAR os dados antes de enviar ao Claude
+      const processedClients = rawData.map(item => {
+        const clientData = item.client_data.Result[0];
+        return {
+          nome: clientData.BasicData.Name,
+          idade: clientData.BasicData.Age,
+          genero: clientData.BasicData.Gender, // 👈 AGORA TEM GÊNERO!
+          cpf: clientData.BasicData.TaxIdNumber,
+          regiao: clientData.BasicData.TaxIdFiscalRegion,
+          statusCPF: clientData.BasicData.TaxIdStatus,
+          estadoCivil: clientData.BasicData.MaritalStatusData?.MaritalStatus || 'Não informado',
+          
+          // KYC
+          processos: clientData.Processes?.TotalLawsuits || 0,
+          sancoes90d: clientData.KycData.Last90DaysSanctions,
+          sancoes180d: clientData.KycData.Last180DaysSanctions,
+          sancoes365d: clientData.KycData.Last365DaysSanctions,
+          sancionadoAtual: clientData.KycData.IsCurrentlySanctioned,
+          isPEP: clientData.KycData.IsCurrentlyPEP,
+          doadorEleitoral: clientData.KycData.IsCurrentlyElectoralDonor,
+          totalDoacoes: clientData.KycData.TotalElectoralDonations,
+          
+          // Financeiro
+          rendaEstimada: clientData.FinancialData.IncomeEstimates?.BIGDATA_V2 || 'N/A',
+          totalAtivos: clientData.FinancialData.TotalAssets || 'N/A',
+          declaracoesIR: clientData.FinancialData.TaxReturns?.map(t => ({
+            ano: t.Year,
+            status: t.Status,
+            banco: t.Bank || 'N/A'
+          })) || [],
+          impostoAPagar: clientData.FinancialData.TaxReturns?.some(t => 
+            t.Year === '2024' && t.Status.includes('IMPOSTO A PAGAR')
+          ) || false,
+          
+          // Relacionamentos
+          conjuges: clientData.RelatedPeople.TotalSpouses,
+          parentes: clientData.RelatedPeople.TotalRelatives,
+          familiares: clientData.RelatedPeople.PersonalRelationships?.map(r => ({
+            tipo: r.RelationshipType,
+            nome: r.RelatedEntityName
+          })) || [],
+          
+          // Profissional
+          empregos: clientData.BusinessRelationships?.TotalEmployments || 0,
+          
+          // Score de Risco (calculado)
+          scoreRisco: calcularRisco(clientData)
+        };
+      });
+
+      // Enviar dados PROCESSADOS ao Claude
+      const assistantResponse = await sendToClaudeAPI(userMessage, processedClients);
       setMessages(prev => [...prev, { role: 'assistant', content: assistantResponse }]);
     } catch (err) {
       setError(err.message);
@@ -544,7 +616,7 @@ function Chatbot() {
             </button>
           </div>
           <p className="text-slate-500 text-xs mt-2 text-center">
-            ⚠️ Configure sua API Key do Claude para usar o chatbot
+            Powered by Claude AI - Análise KYC Inteligente
           </p>
         </div>
       </div>
