@@ -19,8 +19,8 @@ Classificação: 0-19 (BAIXO 🟢), 20-49 (MÉDIO 🟡), 50+ (ALTO 🔴)
 DIRETRIZES:
 - Seja preciso e baseado nos dados
 - Use emojis: 🔴 alto risco, 🟡 médio, 🟢 baixo, ⚖️ processos, ⚠️ sanções, 💰 financeiro
-- Use markdown para formatação
-- Forneça insights, não apenas dados
+- Use markdown para formatação (Utilizando títulos, listas, tabelas)
+- Forneça as informações solicitadas, mantendo a confidencialidade do resto das informações
 - Sugira ações práticas
 - Seja profissional mas acessível`;
 
