@@ -381,38 +381,24 @@ function Chatbot() {
   };
 
   const sendToClaudeAPI = async (userMessage, clientData) => {
-    try {
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': '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',
-          'anthropic-version': '2023-06-01'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2048,
-          system: SYSTEM_PROMPT,
-          messages: [
-            {
-              role: 'user',
-              content: `Aqui estão os dados atualizados dos clientes do banco de dados:\n\n${JSON.stringify(clientData, null, 2)}\n\nPergunta do usuário: ${userMessage}\n\nPor favor, analise os dados e responda de forma clara e profissional.`
-            }
-          ]
-        })
-      });
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: userMessage,
+        clientData: clientData
+      })
+    });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Erro ao chamar API do Claude');
-      }
+    if (!response.ok) throw new Error('Erro ao chamar API');
 
-      const data = await response.json();
-      return data.content[0].text;
-    } catch (err) {
-      throw new Error(`Erro na API do Claude: ${err.message}`);
-    }
-  };
+    const data = await response.json();
+    return data.content[0].text;
+  } catch (err) {
+    throw new Error(`Erro: ${err.message}`);
+  }
+};
 
   const handleSend = async () => {
     if (!input.trim() || loading) return;
