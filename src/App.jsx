@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Users, AlertTriangle, FileText, DollarSign, Award, Send, Bot, User, Sparkles, Database, LayoutDashboard, MessageSquare, Menu, X } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 const SUPABASE_URL = 'https://jhiybwxegogdqjyljvoy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpoaXlid3hlZ29nZHFqeWxqdm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI1MzIxMzcsImV4cCI6MjA3ODEwODEzN30.7GLtLbwx4vLIXMC5DjfDVqrqC9-_x0PPiRSCqZhUk4Y';
@@ -547,8 +549,10 @@ function Chatbot() {
                     : 'bg-slate-800 text-slate-100 border border-slate-700'
                 }`}
               >
-                <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">
-                  {message.content}
+                <div className="prose prose-invert prose-sm max-w-none">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {message.content}
+                </ReactMarkdown>
                 </div>
               </div>
 
